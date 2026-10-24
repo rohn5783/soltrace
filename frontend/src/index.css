@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #080b11;
+    color: #e2e8f0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d121d;
+}
+::-webkit-scrollbar-thumb {
+  background: #232d42;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4866;
+}
+
+/* Solana Gradient Accents */
+.solana-gradient-text {
+  background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.solana-gradient-bg {
+  background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
+}
+
+.solana-gradient-border {
+  border-image: linear-gradient(to right, #9945FF, #14F195) 1;
+}
+
+/* Glassmorphism Card Style */
+.sol-card {
+  background: #0f1523;
+  border: 1px solid #1c263b;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.sol-card:hover {
+  border-color: #2b3956;
+}
+
+.sol-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sol-badge-success {
+  background-color: rgba(20, 241, 149, 0.12);
+  color: #14F195;
+  border: 1px solid rgba(20, 241, 149, 0.25);
+}
+
+.sol-badge-failed {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.sol-badge-info {
+  background-color: rgba(153, 69, 255, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(153, 69, 255, 0.25);
+}
+
+/* Pulsing Live Dot */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px #14F195;
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.9);
+    box-shadow: 0 0 2px #14F195;
+  }
+}
+
+.live-indicator {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

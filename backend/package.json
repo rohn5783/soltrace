@@ -1,0 +1,25 @@
+{
+  "name": "soltrace-backend",
+  "version": "1.0.0",
+  "description": "Soltrace - Solana Block Explorer API with MERN stack",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.0",
+    "axios": "^1.8.4",
+    "bs58": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.13.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
