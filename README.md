@@ -201,5 +201,16 @@ npm run dev
 
 ---
 
+## Live Deployment
+
+- **Backend API (Render)**: [`https://soltrace-1e7t.onrender.com`](https://soltrace-1e7t.onrender.com)
+  - Health Check: `https://soltrace-1e7t.onrender.com/api/health`
+  - Overview Telemetry: `https://soltrace-1e7t.onrender.com/api/stats/overview`
+- **Frontend Environment**:
+  - `VITE_BACKEND_URL`: `https://soltrace-1e7t.onrender.com`
+  - Fully configured for instant zero-configuration deployment on **Vercel** or **Netlify** with SPA rewrite rules included (`vercel.json` & `_redirects`).
+
+---
+
 ## Verification & Screenshots
 The browser subagent has validated end-to-end functionality across all routes (`/`, `/blocks`, `/txs`, `/tx/:signature`, `/tokens`, `/token/:mint`, `/account/:address`, `/analytics`, `/watchlist`).

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { BACKEND_URL } from '../api/client';
 
 const NetworkContext = createContext(null);
 
@@ -25,7 +26,8 @@ export const NetworkProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const socket = io('/', {
+    const socketUrl = BACKEND_URL || '/';
+    const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
     });
