@@ -10,7 +10,7 @@ export const API_BASE_URL = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 12000,
+  timeout: 45000,
 });
 
 api.interceptors.response.use(

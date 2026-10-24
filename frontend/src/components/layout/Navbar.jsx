@@ -238,6 +238,13 @@ export default function Navbar() {
           </div>
         </div>
 
+        {/* Mobile Search Bar on Non-Dashboard Pages */}
+        {!isDashboard && !mobileMenuOpen && (
+          <div className="md:hidden pb-3 pt-1">
+            <SearchBar isHero={false} />
+          </div>
+        )}
+
         {/* Mobile Nav Drawer */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-slate-800 space-y-2">

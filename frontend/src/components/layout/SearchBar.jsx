@@ -29,7 +29,7 @@ export default function SearchBar({ isHero = false, className = '' }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside (supporting touch on mobile)
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -37,7 +37,11 @@ export default function SearchBar({ isHero = false, className = '' }) {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const handleSearch = async (e) => {
@@ -160,7 +164,11 @@ export default function SearchBar({ isHero = false, className = '' }) {
 
       {/* Autocomplete / Instant Result Dropdown */}
       {isFocused && (result || error || (query.length > 2 && !loading)) && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-[#0e1628] border border-slate-700/80 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-md">
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="absolute left-0 right-0 top-full mt-2 bg-[#0e1628] border border-slate-700/80 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-md"
+        >
           {result ? (
             <div>
               <div className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase px-3 py-1.5 flex items-center justify-between">

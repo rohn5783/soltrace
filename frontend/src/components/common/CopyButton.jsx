@@ -10,11 +10,42 @@ export default function CopyButton({ text, label = '', className = '' }) {
     if (!text) return;
 
     try {
-      await navigator.clipboard.writeText(text);
+      // 1. Try modern clipboard API if supported and in secure context
+      if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // 2. Mobile / Non-HTTPS fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy', err);
+      console.warn('Clipboard copy failed, using fallback:', err);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (fallbackErr) {
+        console.error('Copy completely failed:', fallbackErr);
+      }
     }
   };
 
@@ -23,7 +54,7 @@ export default function CopyButton({ text, label = '', className = '' }) {
       onClick={handleCopy}
       type="button"
       title={copied ? 'Copied to clipboard!' : `Copy ${label || 'to clipboard'}`}
-      className={`inline-flex items-center gap-1 p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors ${className}`}
+      className={`inline-flex items-center gap-1 p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors active:scale-95 ${className}`}
     >
       {copied ? (
         <>
