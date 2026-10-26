@@ -19,8 +19,13 @@ import watchlistRoutes from './routes/watchlist.js';
 const app = express();
 app.set('trust proxy', process.env.TRUST_PROXY === 'false' ? false : 1);
 const server = http.createServer(app);
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',').map((value) => value.trim()).filter(Boolean);
-const corsOptions = { origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)), methods: ['GET', 'POST', 'DELETE'], credentials: false };
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://frontend-ecru-eight-24.vercel.app',
+  ...(process.env.CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean),
+]);
+const corsOptions = { origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)), methods: ['GET', 'POST', 'DELETE'], credentials: false };
 const io = new Server(server, { cors: corsOptions });
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '32kb' }));
