@@ -91,11 +91,11 @@ export default function LatestBlocksTable({ liveBlock }) {
                     <div className="text-[10px] text-slate-500 font-sans mt-0.5 flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
                       <span>
-                        {new Date(block.blockTime).toLocaleTimeString([], {
+                        {block.blockTime ? new Date(block.blockTime).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
                           second: '2-digit',
-                        })}
+                        }) : 'Unavailable'}
                       </span>
                     </div>
                   </td>
@@ -103,10 +103,10 @@ export default function LatestBlocksTable({ liveBlock }) {
                     <AddressLink address={block.leader} chars={5} />
                   </td>
                   <td className="py-2.5 px-3 text-right text-slate-200">
-                    {block.txCount?.toLocaleString() || 0}
+                    {block.txCount?.toLocaleString() ?? 'N/A'}
                   </td>
                   <td className="py-2.5 px-3 text-right text-emerald-400">
-                    +{Number(block.reward || 0.02).toFixed(4)} SOL
+                    {block.reward == null ? 'N/A' : `+${Number(block.reward).toFixed(4)} SOL`}
                   </td>
                 </tr>
               ))}

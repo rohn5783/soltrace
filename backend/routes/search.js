@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
     res.json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 

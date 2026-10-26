@@ -7,11 +7,11 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const network = req.query.network || 'mainnet-beta';
-    const limit = parseInt(req.query.limit || '15', 10);
+    const limit = req.query.limit === undefined ? 15 : Number(req.query.limit);
     const blocks = await solanaService.getLatestBlocks(network, limit);
     res.json({ success: true, count: blocks.length, data: blocks });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 
@@ -22,11 +22,11 @@ router.get('/:slot', async (req, res) => {
     const slot = req.params.slot;
     const block = await solanaService.getBlockBySlot(network, slot);
     if (!block) {
-      return res.status(404).json({ success: false, error: 'Block not found' });
+      return res.status(404).json({ success: false, error: 'Block not found', code: 'NOT_FOUND', requestId: req.id });
     }
     res.json({ success: true, data: block });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 

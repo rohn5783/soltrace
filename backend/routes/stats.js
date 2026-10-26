@@ -10,7 +10,7 @@ router.get('/overview', async (req, res) => {
     const stats = await solanaService.getNetworkOverview(network);
     res.json({ success: true, data: stats });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 
@@ -20,7 +20,7 @@ router.get('/tps-chart', (req, res) => {
     const points = solanaService.getHistoricalTps();
     res.json({ success: true, data: points });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 

@@ -16,9 +16,9 @@ export const NetworkProvider = ({ children }) => {
   });
 
   const [liveBlock, setLiveBlock] = useState(null);
-  const [liveTx, setLiveTx] = useState(null);
-  const [liveTps, setLiveTps] = useState(null);
+  const [liveSlot, setLiveSlot] = useState(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [streamNetwork, setStreamNetwork] = useState(null);
 
   const handleNetworkChange = (newNet) => {
     setNetwork(newNet);
@@ -26,26 +26,26 @@ export const NetworkProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    setLiveSlot(null);
+    setLiveBlock(null);
     const socketUrl = BACKEND_URL || '/';
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
+      query: { network },
     });
 
     socket.on('connect', () => {
       setIsLiveConnected(true);
     });
+    socket.on('connected', (status) => setStreamNetwork(status.network || null));
 
     socket.on('new_block', (block) => {
-      setLiveBlock(block);
+      if (block.network === network) setLiveBlock(block);
     });
 
-    socket.on('new_transaction', (tx) => {
-      setLiveTx(tx);
-    });
-
-    socket.on('tps_pulse', (data) => {
-      setLiveTps(data);
+    socket.on('new_slot', (slot) => {
+      if (slot.network === network) setLiveSlot(slot);
     });
 
     socket.on('disconnect', () => {
@@ -55,7 +55,7 @@ export const NetworkProvider = ({ children }) => {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [network]);
 
   return (
     <NetworkContext.Provider
@@ -64,9 +64,9 @@ export const NetworkProvider = ({ children }) => {
         setNetwork: handleNetworkChange,
         networks: NETWORKS,
         liveBlock,
-        liveTx,
-        liveTps,
+        liveSlot,
         isLiveConnected,
+        streamNetwork,
       }}
     >
       {children}

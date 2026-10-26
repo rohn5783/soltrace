@@ -1,216 +1,115 @@
-# Soltrace — Full-Stack Solana Block Explorer (MERN Stack)
+# Soltrace
 
-**Soltrace** is a high-performance, full-stack Solana block explorer built using the **MERN stack** (MongoDB, Express, React 19, Node.js) and the **Solana blockchain** via `@solana/web3.js` and `@solana/spl-token`.
+Soltrace is a Solana explorer UI with direct RPC reads and an optional recent-block indexer. Direct RPC lookup and indexed history are distinct: the API currently queries the configured Solana cluster for live state, while the indexer stores a bounded recent range from its configured starting slot. It does not index the whole chain.
 
----
+## Architecture and status
 
-## Architecture Overview
+```text
+React/Vite ── REST + Socket.IO ── Express API ── Solana JSON RPC / WebSocket
+                                      │
+                                      └── MongoDB (optional reads, required for indexer)
 
-```
-                                      ┌────────────────────────────────────────┐
-                                      │           Solana Blockchain            │
-                                      │  (Mainnet-Beta / Devnet / Testnet RPC) │
-                                      └───────────────────▲────────────────────┘
-                                                          │
-                                                @solana/web3.js / RPC
-                                                          │
-┌────────────────────────────────┐            ┌───────────▼────────────────────┐
-│      Frontend (React 19)       │  REST API  │       Backend (Express.js)     │
-│   • Tailwind CSS (Cyber Dark)  │◄──────────►│   • Solana RPC Manager         │
-│   • Live WebSocket Streams     │            │   • CoinGecko & Jupiter Prices │
-│   • Universal Search (Ctrl+K)  │ Socket.io  │   • In-Memory / Mongo Cache    │
-│   • Interactive Recharts TPS   │◄──────────►│   • Real-Time Block Streamer   │
-└────────────────────────────────┘            └───────────────────▲────────────┘
-                                                                  │
-                                                               Mongoose
-                                                                  │
-                                                      ┌───────────▼────────────┐
-                                                      │    MongoDB Database    │
-                                                      │ (Watchlists, Txs, DB)  │
-                                                      └────────────────────────┘
+Indexer worker ── Solana RPC ── MongoDB blocks, transactions, checkpoints
 ```
 
----
+- **Implemented:** direct RPC slot/epoch/performance samples; block details and recent confirmed blocks; signature lookup; account balance and SPL token accounts; mint supply/decimals/authorities; external price lookup with timestamps; RPC slot/block socket events; bounded restartable indexer; health/readiness and unit tests.
+- **Partial:** MongoDB models/indexes; the HTTP explorer primarily serves direct RPC responses and does not yet use indexed records as its read-through store. Metrics are process-level only. Rate limiting is local to one API process.
+- **Unavailable/planned:** Redis caching, full chain indexing, historical TPS chart, complete address history independent of provider support, holder distribution, validator decentralization metrics, authenticated cloud watchlists.
 
-## Key Features Implemented
+## Requirements and installation
 
-### 1. Global Universal Search (`Ctrl + K`)
-- **Auto-Detects**:
-  - Solana Wallet / Account Public Keys (32–44 chars base58) -> `/account/:address`
-  - Transaction Signatures (88 chars base58) -> `/tx/:signature`
-  - SPL Token Mint Addresses -> `/token/:mint`
-  - Confirmed Block Slots (e.g. `460705976`) -> `/block/:slot`
-  - Token Symbols (SOL, USDC, USDT, JUP, BONK, WIF, RAY, PYTH)
-- Instant autocomplete dropdown and hotkey support (`Ctrl + K`).
-
-### 2. Live Network Ticker & Metrics
-- **Real-time SOL Price** with 24h change & market capitalization.
-- **Dynamic TPS Counter**: Total network TPS alongside **True (Non-Vote) TPS**.
-- **Epoch Tracker**: Epoch number, slot progression bar, and countdown.
-- **Cluster Switcher**: One-click toggle between **Mainnet Beta**, **Devnet**, and **Testnet**.
-
-### 3. Confirmed Blocks Explorer (`/blocks` & `/block/:slot`)
-- Real-time feed of newly confirmed blocks.
-- Block slot number, Blockhash, Previous Blockhash, Parent slot, Leader validator, transaction count, reward in SOL, and block time.
-- Dedicated Block detail page displaying all contained transactions with status badges.
-
-### 4. Transactions Explorer (`/txs` & `/tx/:signature`)
-- Paginated feed of confirmed transactions with filter by **All**, **Success**, and **Failed**.
-- Detailed inspection:
-  - Signer / Fee payer address
-  - Transaction fee in SOL and USD
-  - Decoded **Program Instructions** (System Program, Token Program, Jupiter, Raydium, Orca) with parsed parameters and accounts
-  - **Program Execution Logs** with syntax highlighting
-  - **SOL Balance Changes** (Pre vs Post balance)
-  - **SPL Token Balance Changes** (Pre vs Post token amounts)
-  - **Raw JSON Inspector** for developers.
-
-### 5. Account & Wallet Portfolio Inspector (`/account/:address`)
-- Native SOL balance in SOL and real-time USD valuation.
-- Executable contract detection (Smart Contract program vs User wallet).
-- **SPL Token Portfolio table**: lists all tokens owned with balances, prices, and USD values.
-- **Transaction History**: all past activity associated with this address.
-- **Mobile Wallet QR Code**: generates a scannable QR code for Phantom or Solflare wallets.
-
-### 6. SPL Tokens Market (`/tokens` & `/token/:mint`)
-- Ranked table of top Solana tokens by market cap and 24h volume.
-- Token detail pages: Total supply, decimals, holders, price change, and **Security Authorities** (Mint Authority & Freeze Authority revocation status).
-- **Top Token Holders Distribution**: breakdown of whale accounts and liquidity pool vaults.
-
-### 7. Network Telemetry & Analytics (`/analytics`)
-- 24-hour historical TPS interactive area chart.
-- TPS Execution Composition (Vote consensus transactions vs Smart contract executions).
-- Validator decentralization statistics, Nakamoto coefficient, and staked supply.
-
-### 8. Watchlist & Bookmarks (`/watchlist`)
-- Save favorite wallets, SPL tokens, or notable transactions.
-- Syncs seamlessly between MongoDB and browser local storage.
-
----
-
-## Directory Structure
-
-```
-solscanio/
-├── package.json                 # Monorepo scripts & runner
-├── start.js                     # Concurrent server launcher
-├── backend/                     # Express & Node.js API server
-│   ├── package.json
-│   ├── .env.example             # Template for configuration
-│   ├── .env                     # Environment variables
-│   ├── server.js                # Express app & Socket.io server
-│   ├── config/
-│   │   ├── db.js                # Mongoose with automatic in-memory fallback
-│   │   └── solana.js            # Solana Web3 connection pool & helpers
-│   ├── models/
-│   │   ├── Block.js             # Solana Block Mongoose schema
-│   │   ├── Transaction.js       # Solana Transaction schema
-│   │   ├── Token.js             # SPL Token schema
-│   │   ├── Watchlist.js         # User bookmarks schema
-│   │   └── NetworkStat.js       # Historical TPS & stats schema
-│   ├── routes/
-│   │   ├── stats.js             # Network overview & TPS chart
-│   │   ├── blocks.js            # Blocks list & slot detail
-│   │   ├── transactions.js      # Transactions list & detail
-│   │   ├── accounts.js          # Wallet balance, tokens & history
-│   │   ├── tokens.js            # SPL token ranking & details
-│   │   ├── search.js            # Universal auto-detect search
-│   │   └── watchlist.js         # Watchlist CRUD
-│   ├── services/
-│   │   ├── solanaService.js     # @solana/web3.js on-chain query engine
-│   │   ├── priceService.js      # CoinGecko & Jupiter pricing
-│   │   └── mockDataService.js   # Resilient fallback seeds & program dictionary
-│   └── sockets/
-│       └── streamer.js          # Socket.io live block/tx broadcaster
-└── frontend/                    # React 19 + Vite + Tailwind CSS
-    ├── package.json
-    ├── vite.config.js           # Vite config with backend proxy
-    ├── index.html               # Soltrace metadata, favicon, Inter font
-    └── src/
-        ├── main.jsx             # React entry point
-        ├── App.jsx              # Routes & navigation
-        ├── index.css            # Dark cyber theme & Solana gradients
-        ├── api/
-        │   └── client.js        # Axios instance with error handling
-        ├── context/
-        │   ├── NetworkContext.jsx   # Solana cluster switcher & Socket.io
-        │   └── WatchlistContext.jsx # Saved items manager
-        ├── components/
-        │   ├── common/
-        │   │   ├── CopyButton.jsx
-        │   │   ├── StatusBadge.jsx
-        │   │   ├── AddressLink.jsx
-        │   │   ├── TxLink.jsx
-        │   │   ├── QrModal.jsx
-        │   │   └── LoadingSkeleton.jsx
-        │   ├── layout/
-        │   │   ├── Navbar.jsx
-        │   │   ├── Footer.jsx
-        │   │   └── SearchBar.jsx
-        │   ├── dashboard/
-        │   │   ├── StatsOverview.jsx
-        │   │   ├── TpsChart.jsx
-        │   │   ├── LatestBlocksTable.jsx
-        │   │   └── LatestTransactionsTable.jsx
-        │   └── transaction/
-        │       ├── InstructionViewer.jsx
-        │       └── BalanceChangesTable.jsx
-        └── pages/
-            ├── Dashboard.jsx
-            ├── BlocksPage.jsx
-            ├── BlockDetailPage.jsx
-            ├── TransactionsPage.jsx
-            ├── TransactionDetailPage.jsx
-            ├── AccountPage.jsx
-            ├── TokensPage.jsx
-            ├── TokenDetailPage.jsx
-            ├── AnalyticsPage.jsx
-            └── WatchlistPage.jsx
-```
-
----
-
-## How to Run Locally
-
-### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node v24)
-- **MongoDB**: (Optional — application automatically runs in zero-friction in-memory cache mode if a local MongoDB instance is not detected)
-
-### 2. Start Both Backend and Frontend
-From the root directory:
+- Node.js 20 or newer (the frontend currently uses Vite 8).
+- npm.
+- MongoDB is required for the indexer and optional persistence. The API can still serve direct RPC reads when MongoDB is unavailable; `/api/ready` reports degraded readiness when MongoDB is unavailable or the configured cluster name is invalid.
+- Docker Compose is optional for local MongoDB and app services.
 
 ```bash
-npm start
+npm --prefix backend ci
+npm --prefix frontend ci
+Copy-Item backend/.env.example backend/.env
 ```
 
-Or run each service individually:
+Configure `backend/.env` with a suitable RPC endpoint and MongoDB URI. Do not commit `.env` files or API keys. The public cluster endpoints are convenience defaults and are rate-limited; production should use a Solana provider that supports historical transactions and blocks.
 
-**Backend:**
+## Environment
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PORT` | API listen port | `5000` |
+| `NODE_ENV` | Error detail mode | unset/development |
+| `MONGODB_URI` | MongoDB connection string | unset; persistence unavailable |
+| `MONGODB_TIMEOUT_MS` | MongoDB connection timeout | `8000` |
+| `SOLANA_RPC_MAINNET` | Mainnet HTTP RPC URL | Solana public endpoint |
+| `SOLANA_RPC_DEVNET` | Devnet HTTP RPC URL | Solana public endpoint |
+| `SOLANA_RPC_TESTNET` | Testnet HTTP RPC URL | Solana public endpoint |
+| `SOLANA_WS_MAINNET` / `SOLANA_WS_DEVNET` / `SOLANA_WS_TESTNET` | Optional provider WebSocket URLs | Derived from HTTP RPC URL |
+| `SOLANA_STREAM_ENABLED` | Enable the live slot subscription | `false` |
+| `SOLANA_COMMITMENT` | `processed`, `confirmed`, or `finalized` | `confirmed` |
+| `SOLANA_RPC_TIMEOUT_MS` | Bounded RPC timeout (1–60 seconds) | `10000` |
+| `SOLANA_RPC_MAX_RETRIES` | Retry count (0–5) | `2` |
+| `SOLANA_STREAM_NETWORK` | Network used by the single global slot stream | `mainnet-beta` |
+| `CORS_ORIGINS` | Comma-separated frontend origins | localhost Vite/3000 |
+| `MARKET_DATA_TIMEOUT_MS` | External market data timeout | `4000` |
+| `SOLANA_INDEX_NETWORK` | Indexer cluster | `mainnet-beta` |
+| `INDEXER_BATCH_SIZE` | Maximum slot range per indexer batch (1–100) | `20` |
+| `INDEXER_INITIAL_LOOKBACK_SLOTS` | First-run recent slot lookback (1–10000) | `100` |
+| `VITE_BACKEND_URL` | Frontend backend origin | same-origin `/api` in dev proxy mode |
+
+A provider URL may contain credentials; keep it in an environment secret and do not print it in logs.
+
+## Run locally
+
 ```bash
-cd backend
-npm run dev
-# Running on http://localhost:5000
+npm --prefix backend run dev
+npm --prefix frontend run dev
 ```
 
-**Frontend:**
+Review [the index migration notes](docs/MIGRATION.md) before applying schema indexes to an existing database.
+
+Run the bounded indexer separately after setting MongoDB:
+
 ```bash
-cd frontend
-npm run dev
-# Running on http://localhost:3000
+npm --prefix backend run indexer
 ```
 
----
+The first run starts `INDEXER_INITIAL_LOOKBACK_SLOTS` behind the current confirmed slot. Later runs resume from the per-network checkpoint. The indexer records produced blocks and transactions; successful `getBlocks` ranges also advance over skipped slots. It is not a historical backfill by default.
 
-## Live Deployment
+## API examples
 
-- **Backend API (Render)**: [`https://soltrace-1e7t.onrender.com`](https://soltrace-1e7t.onrender.com)
-  - Health Check: `https://soltrace-1e7t.onrender.com/api/health`
-  - Overview Telemetry: `https://soltrace-1e7t.onrender.com/api/stats/overview`
-- **Frontend Environment**:
-  - `VITE_BACKEND_URL`: `https://soltrace-1e7t.onrender.com`
-  - Fully configured for instant zero-configuration deployment on **Vercel** or **Netlify** with SPA rewrite rules included (`vercel.json` & `_redirects`).
+```text
+GET /api/health
+GET /api/ready
+GET /api/metrics
+GET /api/stats/overview?network=mainnet-beta
+GET /api/blocks?network=mainnet-beta&limit=15
+GET /api/blocks/300000000?network=mainnet-beta
+GET /api/transactions/<base58-signature>?network=mainnet-beta
+GET /api/accounts/<public-key>?network=mainnet-beta
+GET /api/accounts/<public-key>/tokens?network=mainnet-beta
+GET /api/tokens/<mint>?network=mainnet-beta
+```
 
----
+Invalid network/key/signature/slot/limit inputs return HTTP 400. Unknown blocks and transactions return 404; RPC failures return an upstream error. Responses use the existing `{ success, data }` envelope. Direct RPC objects include `source: "rpc"`, `network`, `fetchedAt`, and `stale: false`. Market data has its own provider/time fields. Missing values are null or unavailable, not estimates.
 
-## Verification & Screenshots
-The browser subagent has validated end-to-end functionality across all routes (`/`, `/blocks`, `/txs`, `/tx/:signature`, `/tokens`, `/token/:mint`, `/account/:address`, `/analytics`, `/watchlist`).
+`/api/watchlist` server routes are disabled until authentication and per-user ownership are implemented. The frontend retains browser-local bookmarks.
+
+## Tests and builds
+
+```bash
+npm --prefix backend test
+npm --prefix frontend run lint
+npm --prefix frontend run build
+```
+
+## Deployment
+
+- **Vercel/Netlify:** deploy `frontend` as a Vite SPA. Set `VITE_BACKEND_URL` to the deployed API origin and preserve the existing SPA rewrite files. This is required: the static frontend host does not run the Express API. Vite embeds this value at build time, so redeploy after changing it.
+- **Render:** deploy `backend` as a Node service. Set `MONGODB_URI`, a production RPC provider URL for each enabled network, commitment, timeout/retry values, and `CORS_ORIGINS` to include the exact frontend origin. The public Solana RPC is rate-limited and is not suitable for sustained explorer traffic. If enabling live slots, set `SOLANA_STREAM_ENABLED=true` and configure the matching provider WebSocket URL. Keep the worker as a separate process using `npm run indexer`; do not start it inside the API.
+- **Socket.IO:** allow the frontend origin in `CORS_ORIGINS`. The current backend has one configured global stream network; switching a client UI cluster does not dynamically create per-network socket subscriptions.
+- **Docker Compose:** `docker compose up --build` runs frontend, API, and local MongoDB. Use `--profile worker` to add the indexer. Compose Redis is not included because the application does not yet have a Redis client/cache implementation.
+
+## Known limitations and security
+
+The public RPC endpoint may rate limit, prune blocks, or omit historical transaction data. Solscan does not claim a full-chain index. External token pricing is best-effort and does not provide 24-hour change, volume, rankings, or reliable market cap in all cases. Holder counts are not inferred from partial account lists. Watchlists are local-only. Set strong database credentials and restrict database/network access. Never expose provider keys in frontend variables or logs.
+
+The current backend production dependency audit has 4 moderate advisories in the `@solana/web3.js` 1.x → `jayson` dependency tree. Removing an unused SPL Token dependency eliminated 3 high findings. Address the remaining advisories in a planned web3.js 3.x compatibility migration; do not apply npm's forced major upgrade without API migration and tests.

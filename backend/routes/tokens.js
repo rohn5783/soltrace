@@ -6,10 +6,11 @@ const router = express.Router();
 // GET /api/tokens - Top SPL tokens
 router.get('/', async (req, res) => {
   try {
-    const tokens = await solanaService.getTokens();
+    const network = req.query.network || 'mainnet-beta';
+    const tokens = await solanaService.getTokens(network);
     res.json({ success: true, count: tokens.length, data: tokens });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 
@@ -17,13 +18,14 @@ router.get('/', async (req, res) => {
 router.get('/:mint', async (req, res) => {
   try {
     const mint = req.params.mint;
-    const token = await solanaService.getTokenByMint(mint);
+    const network = req.query.network || 'mainnet-beta';
+    const token = await solanaService.getTokenByMint(mint, network);
     if (!token) {
-      return res.status(404).json({ success: false, error: 'Token not found' });
+      return res.status(404).json({ success: false, error: 'Token not found', code: 'NOT_FOUND', requestId: req.id });
     }
     res.json({ success: true, data: token });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 

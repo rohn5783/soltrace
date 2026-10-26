@@ -14,7 +14,7 @@ router.get('/:address', async (req, res) => {
     }
     res.json({ success: true, data: account });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 
@@ -26,7 +26,7 @@ router.get('/:address/tokens', async (req, res) => {
     const tokens = await solanaService.getAccountTokens(network, address);
     res.json({ success: true, count: tokens.length, data: tokens });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 
@@ -35,11 +35,11 @@ router.get('/:address/transactions', async (req, res) => {
   try {
     const network = req.query.network || 'mainnet-beta';
     const address = req.params.address;
-    const limit = parseInt(req.query.limit || '20', 10);
+    const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
     const txs = await solanaService.getAccountTransactions(network, address, limit);
     res.json({ success: true, count: txs.length, data: txs });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(error.statusCode || 500).json({ success: false, error: (process.env.NODE_ENV === 'production' && (error.statusCode || 500) >= 500) ? 'Request failed' : error.message, code: error.code || 'INTERNAL_ERROR', requestId: req.id });
   }
 });
 

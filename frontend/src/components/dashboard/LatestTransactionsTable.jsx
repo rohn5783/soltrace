@@ -8,7 +8,7 @@ import LoadingSkeleton from '../common/LoadingSkeleton';
 import api from '../../api/client';
 import { useNetwork } from '../../context/NetworkContext';
 
-export default function LatestTransactionsTable({ liveTx }) {
+export default function LatestTransactionsTable() {
   const [txs, setTxs] = useState([]);
   const [loading, setLoading] = useState(true);
   const { network } = useNetwork();
@@ -33,17 +33,6 @@ export default function LatestTransactionsTable({ liveTx }) {
       mounted = false;
     };
   }, [network]);
-
-  // Handle incoming live transaction from Socket.io
-  useEffect(() => {
-    if (liveTx) {
-      setTxs((prev) => {
-        const exists = prev.some((t) => t.signature === liveTx.signature);
-        if (exists) return prev;
-        return [liveTx, ...prev.slice(0, 9)];
-      });
-    }
-  }, [liveTx]);
 
   return (
     <div className="sol-card p-5">
@@ -79,7 +68,7 @@ export default function LatestTransactionsTable({ liveTx }) {
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {txs.map((tx) => {
-                const progName = tx.instructions?.[0]?.programName || 'Solana Transfer';
+                const progName = tx.instructions?.[0]?.programName || 'Unknown Program';
                 return (
                   <tr
                     key={tx.signature}
@@ -107,7 +96,7 @@ export default function LatestTransactionsTable({ liveTx }) {
                       <AddressLink address={tx.signer} chars={4} />
                     </td>
                     <td className="py-2.5 px-3 text-right text-slate-300">
-                      {tx.fee ? Number(tx.fee).toFixed(6) : '0.000005'}
+                      {tx.fee == null ? 'N/A' : Number(tx.fee).toFixed(6)}
                     </td>
                   </tr>
                 );

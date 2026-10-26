@@ -27,6 +27,7 @@ export default function AccountPage() {
   const [tokens, setTokens] = useState([]);
   const [txs, setTxs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [unverified, setUnverified] = useState({ account: false, tokens: false, transactions: false });
   const [activeTab, setActiveTab] = useState('tokens'); // 'tokens', 'txs'
   const [qrOpen, setQrOpen] = useState(false);
 
@@ -44,13 +45,38 @@ export default function AccountPage() {
           api.get(`/accounts/${address}/transactions?network=${network}`).catch(() => null),
         ]);
 
-        if (mounted) {
-          if (accRes?.success && accRes.data) setAccount(accRes.data);
-          if (tokenRes?.success && tokenRes.data) setTokens(tokenRes.data);
-          if (txRes?.success && txRes.data) setTxs(txRes.data);
-        }
+        if (!mounted) return;
+
+        const accountData = accRes?.data;
+        const accountVerified = accRes?.success === true
+          && accountData?.source === 'rpc'
+          && accountData?.stale === false
+          && accountData?.network === network
+          && accountData?.address === address
+          && typeof accountData?.accountExists === 'boolean'
+          && Number.isFinite(accountData?.lamports)
+          && Number.isInteger(accountData?.lamports)
+          && Number.isSafeInteger(accountData?.observedSlot)
+          && Number.isFinite(accountData?.solBalance);
+        const tokenDataVerified = tokenRes?.success === true
+          && Array.isArray(tokenRes.data)
+          && tokenRes.data.every((token) => token?.source === 'rpc' && token?.stale === false && token?.network === network);
+        const transactionDataVerified = txRes?.success === true
+          && Array.isArray(txRes.data)
+          && txRes.data.every((tx) => tx?.source === 'rpc' && tx?.stale === false && tx?.network === network);
+
+        setAccount(accountVerified ? accountData : null);
+        setTokens(tokenDataVerified ? tokenRes.data : []);
+        setTxs(transactionDataVerified ? txRes.data : []);
+        setUnverified({ account: !accountVerified, tokens: !tokenDataVerified, transactions: !transactionDataVerified });
       } catch (err) {
         console.warn('Failed to fetch account info:', err.message);
+        if (mounted) {
+          setAccount(null);
+          setTokens([]);
+          setTxs([]);
+          setUnverified({ account: true, tokens: true, transactions: true });
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -65,8 +91,9 @@ export default function AccountPage() {
   const bookmarked = isWatchlisted(address);
 
   // Calculate total portfolio net worth
-  const tokensTotalUsd = tokens.reduce((sum, t) => sum + (t.usdValue || 0), 0);
-  const totalNetWorth = (account?.usdValue || 0) + tokensTotalUsd;
+  const tokensTotalUsd = tokens.reduce((sum, t) => sum + (t.usdValue ?? 0), 0);
+  const hasCompleteValuation = !unverified.account && !unverified.tokens && account?.usdValue != null && tokens.every((token) => token.usdValue != null);
+  const totalNetWorth = hasCompleteValuation ? account.usdValue + tokensTotalUsd : null;
 
   if (loading) {
     return (
@@ -97,10 +124,16 @@ export default function AccountPage() {
               <h1 className="text-xl sm:text-2xl font-bold text-white font-mono truncate max-w-xs sm:max-w-md">
                 Account Profile
               </h1>
-              {account?.executable ? (
+              {unverified.account ? (
+                <span className="sol-badge sol-badge-info">Unverified</span>
+              ) : account?.accountExists === false ? (
+                <span className="sol-badge sol-badge-info">No on-chain account</span>
+              ) : account?.executable ? (
                 <span className="sol-badge sol-badge-info">Program / Contract</span>
-              ) : (
+              ) : account ? (
                 <span className="sol-badge sol-badge-success">User Wallet</span>
+              ) : (
+                <span className="sol-badge sol-badge-info">Unverified</span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -109,6 +142,12 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
+
+        {account && (
+          <p className="text-xs text-slate-500">
+            Confirmed RPC snapshot at slot {account.observedSlot} · fetched {new Date(account.fetchedAt).toLocaleString()}
+          </p>
+        )}
 
         {/* Action Buttons: QR Code & Watchlist */}
         <div className="flex items-center gap-2">
@@ -145,6 +184,12 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {(unverified.account || unverified.tokens || unverified.transactions) && (
+        <div role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          Some wallet data could not be verified from the selected Solana network. Unverified balances and history are hidden. Check the API connection and RPC provider, then refresh.
+        </div>
+      )}
+
       {/* Account Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* SOL Balance */}
@@ -153,10 +198,10 @@ export default function AccountPage() {
             Native SOL Balance
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            {account?.solBalance ? Number(account.solBalance).toFixed(4) : '0.0000'} SOL
+            {account?.solBalance == null ? 'N/A' : `${Number(account.solBalance).toFixed(4)} SOL`}
           </div>
           <span className="text-xs text-emerald-400 font-medium">
-            ≈ ${account?.usdValue ? account.usdValue.toLocaleString() : '0.00'} USD
+            ≈ {account?.usdValue == null ? 'N/A' : `$${account.usdValue.toLocaleString()}`} USD
           </span>
         </div>
 
@@ -166,7 +211,7 @@ export default function AccountPage() {
             Total Estimated Net Worth
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {totalNetWorth == null ? 'N/A' : `$${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           </div>
           <span className="text-xs text-slate-400">
             Including {tokens.length} SPL tokens
@@ -179,7 +224,7 @@ export default function AccountPage() {
             Assigned Owner Program
           </span>
           <div className="text-sm font-semibold text-slate-200 mt-2 mb-1 truncate">
-            {account?.ownerProgramName || 'System Program'}
+            {account?.ownerProgramName || (account?.accountExists === false ? 'No on-chain account' : 'N/A')}
           </div>
           <AddressLink address={account?.ownerProgram} chars={6} />
         </div>
@@ -197,7 +242,7 @@ export default function AccountPage() {
             }`}
           >
             <Coins className="w-4 h-4 text-emerald-400" />
-            <span>SPL Token Holdings ({tokens.length})</span>
+            <span>SPL Token Holdings ({unverified.tokens ? 'N/A' : tokens.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('txs')}
@@ -208,14 +253,18 @@ export default function AccountPage() {
             }`}
           >
             <History className="w-4 h-4 text-purple-400" />
-            <span>Transaction History ({txs.length})</span>
+            <span>Transaction History ({unverified.transactions ? 'N/A' : txs.length})</span>
           </button>
         </div>
 
         {/* Tab 1: Token Portfolio */}
         {activeTab === 'tokens' && (
           <div className="p-5">
-            {tokens.length === 0 ? (
+            {unverified.tokens ? (
+              <p className="text-xs text-amber-300 italic py-4 text-center">
+                Token holdings are unavailable because the RPC response could not be verified.
+              </p>
+            ) : tokens.length === 0 ? (
               <p className="text-xs text-slate-500 italic py-4 text-center">
                 No SPL tokens held in this account.
               </p>
@@ -260,10 +309,10 @@ export default function AccountPage() {
                           {Number(token.amount).toLocaleString()}
                         </td>
                         <td className="py-3 px-3 text-right text-slate-400">
-                          ${token.price ? Number(token.price).toFixed(2) : '1.00'}
+                          {token.price == null ? 'N/A' : `$${Number(token.price).toFixed(2)}`}
                         </td>
                         <td className="py-3 px-3 text-right text-emerald-400 font-semibold">
-                          ${token.usdValue ? Number(token.usdValue).toFixed(2) : '0.00'}
+                          {token.usdValue == null ? 'N/A' : `$${Number(token.usdValue).toFixed(2)}`}
                         </td>
                       </tr>
                     ))}
@@ -277,7 +326,11 @@ export default function AccountPage() {
         {/* Tab 2: Transaction History */}
         {activeTab === 'txs' && (
           <div className="p-5">
-            {txs.length === 0 ? (
+            {unverified.transactions ? (
+              <p className="text-xs text-amber-300 italic py-4 text-center">
+                Transaction history is unavailable because the RPC response could not be verified.
+              </p>
+            ) : txs.length === 0 ? (
               <p className="text-xs text-slate-500 italic py-4 text-center">
                 No recent transactions found for this account.
               </p>
@@ -308,7 +361,7 @@ export default function AccountPage() {
                           </Link>
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-300">
-                          {t.fee ? Number(t.fee).toFixed(6) : '0.000005'}
+                          {t.fee == null ? 'N/A' : Number(t.fee).toFixed(6)}
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-400 font-sans text-[11px]">
                           {new Date(t.blockTime).toLocaleTimeString()}

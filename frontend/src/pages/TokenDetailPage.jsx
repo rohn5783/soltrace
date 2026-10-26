@@ -69,7 +69,7 @@ export default function TokenDetailPage() {
   }
 
   const bookmarked = isWatchlisted(token.mint);
-  const isPositive = (token.change24h || 0) >= 0;
+  const isPositive = token.change24h != null && token.change24h >= 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -133,11 +133,10 @@ export default function TokenDetailPage() {
         <div className="sol-card p-5">
           <span className="text-xs text-slate-400 uppercase font-medium">Price</span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            ${token.price ? Number(token.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : '0.00'}
+            {token.price == null ? 'N/A' : `$${Number(token.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
           </div>
-          <span className={`inline-flex items-center text-xs font-semibold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {isPositive ? <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" />}
-            {isPositive ? '+' : ''}{token.change24h?.toFixed(2)}% (24h)
+          <span className={`inline-flex items-center text-xs font-semibold ${token.change24h == null ? 'text-slate-400' : isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {token.change24h == null ? 'N/A' : <>{isPositive ? <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" />}{`${isPositive ? '+' : ''}${token.change24h.toFixed(2)}% (24h)`}</>}
           </span>
         </div>
 
@@ -145,10 +144,10 @@ export default function TokenDetailPage() {
         <div className="sol-card p-5">
           <span className="text-xs text-slate-400 uppercase font-medium">Market Capitalization</span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            ${((token.marketCap || 0) / 1e6).toFixed(2)}M
+            {token.marketCap == null ? 'N/A' : `$${(token.marketCap / 1e6).toFixed(2)}M`}
           </div>
           <span className="text-xs text-slate-400">
-            FDV: ${((token.marketCap || 0) / 1e6).toFixed(2)}M
+            FDV: {token.fullyDilutedValuation == null ? 'N/A' : `$${(token.fullyDilutedValuation / 1e6).toFixed(2)}M`}
           </span>
         </div>
 
@@ -156,7 +155,7 @@ export default function TokenDetailPage() {
         <div className="sol-card p-5">
           <span className="text-xs text-slate-400 uppercase font-medium">Total Supply</span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1 truncate">
-            {Number(token.supply || 0).toLocaleString()}
+            {token.supply == null ? 'N/A' : Number(token.supply).toLocaleString()}
           </div>
           <span className="text-xs text-slate-400">
             Decimals: {token.decimals}
@@ -167,7 +166,7 @@ export default function TokenDetailPage() {
         <div className="sol-card p-5">
           <span className="text-xs text-slate-400 uppercase font-medium">Total Holders</span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            {Number(token.holdersCount || 1420).toLocaleString()}
+            {token.holdersCount == null ? 'Unavailable' : Number(token.holdersCount).toLocaleString()}
           </div>
           <span className="text-xs text-cyan-400">
             Active SPL Wallets
@@ -219,7 +218,7 @@ export default function TokenDetailPage() {
         </h3>
 
         {(!token.holders || token.holders.length === 0) ? (
-          <p className="text-xs text-slate-500 italic py-2">Holders data loading...</p>
+          <p className="text-xs text-slate-500 italic py-2">Holder distribution is unavailable from the configured RPC data source.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">

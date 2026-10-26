@@ -160,7 +160,7 @@ export default function TransactionsPage() {
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right text-slate-300">
-                        {tx.fee ? Number(tx.fee).toFixed(6) : '0.000005'}
+                        {tx.fee == null ? 'N/A' : Number(tx.fee).toFixed(6)}
                       </td>
                       <td className="py-3 px-3 text-right text-slate-400 font-sans text-[11px]">
                         {new Date(tx.blockTime).toLocaleTimeString()}

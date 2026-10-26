@@ -22,7 +22,7 @@ export default function Navbar() {
   const [networkDropdownOpen, setNetworkDropdownOpen] = useState(false);
   const [stats, setStats] = useState(null);
 
-  const { network, setNetwork, liveTps, isLiveConnected } = useNetwork();
+  const { network, setNetwork, liveSlot, isLiveConnected, streamNetwork } = useNetwork();
   const location = useLocation();
   const isDashboard = location.pathname === '/';
 
@@ -69,15 +69,14 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5">
               <span className="text-slate-400">SOL:</span>
               <span className="font-semibold text-slate-200">
-                ${stats?.solPrice ? stats.solPrice.toFixed(2) : '186.45'}
+                {stats?.solPrice == null ? 'N/A' : `$${stats.solPrice.toFixed(2)}`}
               </span>
               <span
                 className={`text-[11px] font-medium flex items-center ${
                   (stats?.solPriceChange24h || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
-                {(stats?.solPriceChange24h || 0) >= 0 ? '+' : ''}
-                {stats?.solPriceChange24h?.toFixed(2) || '4.15'}%
+                {stats?.solPriceChange24h == null ? 'N/A' : `${stats.solPriceChange24h >= 0 ? '+' : ''}${stats.solPriceChange24h.toFixed(2)}%`}
               </span>
             </div>
 
@@ -86,15 +85,15 @@ export default function Navbar() {
               <Zap className="w-3.5 h-3.5 text-amber-400" />
               <span>TPS:</span>
               <span className="font-semibold text-slate-200 font-mono">
-                {liveTps?.tps || stats?.tps || '2,845'}
+                {stats?.tps ?? 'N/A'}
               </span>
             </div>
 
             {/* Epoch Progress */}
             <div className="hidden md:flex items-center gap-1.5">
-              <span>Epoch {stats?.currentEpoch || 648}:</span>
+              <span>Epoch {stats?.currentEpoch ?? 'N/A'}:</span>
               <span className="font-semibold text-purple-400 font-mono">
-                {stats?.epochProgress || 44.9}%
+                {stats?.epochProgress == null ? 'N/A' : `${stats.epochProgress}%`}
               </span>
             </div>
 
@@ -102,7 +101,7 @@ export default function Navbar() {
             <div className="hidden lg:flex items-center gap-1.5">
               <span>Slot:</span>
               <span className="font-mono text-slate-300">
-                {liveTps?.slot || stats?.currentSlot || '460,705,976'}
+                {(liveSlot?.network === network ? liveSlot.slot : null) ?? stats?.currentSlot ?? 'N/A'}
               </span>
             </div>
           </div>
@@ -110,8 +109,10 @@ export default function Navbar() {
           {/* Right Status */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 live-indicator"></span>
-              <span className="text-[11px] text-emerald-400 font-medium">Solana Mainnet Online</span>
+              <span className={`w-2 h-2 rounded-full ${isLiveConnected && streamNetwork === network ? 'bg-emerald-400 live-indicator' : 'bg-slate-500'}`}></span>
+              <span className="text-[11px] text-slate-400 font-medium">
+                {isLiveConnected && streamNetwork === network ? `${network} slot stream` : streamNetwork ? `Stream: ${streamNetwork}` : 'Live stream unavailable'}
+              </span>
             </div>
           </div>
         </div>

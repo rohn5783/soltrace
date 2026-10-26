@@ -81,7 +81,7 @@ export default function BlockDetailPage() {
               <h1 className="text-xl sm:text-2xl font-bold text-white font-mono">
                 Block #{block.slot.toLocaleString()}
               </h1>
-              <span className="sol-badge sol-badge-success">Finalized</span>
+              <span className="sol-badge sol-badge-success">Confirmed</span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               Confirmed on Solana {network}
@@ -146,7 +146,7 @@ export default function BlockDetailPage() {
             <span className="text-slate-400 font-medium">Block Time</span>
             <div className="p-2 rounded-lg bg-[#090d18] border border-slate-800 text-slate-200 flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-400" />
-              <span>{new Date(block.blockTime).toUTCString()}</span>
+              <span>{block.blockTime ? new Date(block.blockTime).toUTCString() : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -154,9 +154,9 @@ export default function BlockDetailPage() {
           <div className="space-y-1">
             <span className="text-slate-400 font-medium">Total Transactions</span>
             <div className="p-2 rounded-lg bg-[#090d18] border border-slate-800 text-slate-200 font-mono font-semibold flex items-center justify-between">
-              <span>{block.txCount?.toLocaleString()} txs</span>
+              <span>{block.txCount?.toLocaleString() ?? 'N/A'} txs</span>
               <span className="text-emerald-400 text-[11px] font-sans font-normal">
-                {block.successfulTxCount} successful
+                {block.successfulTxCount == null ? 'N/A' : `${block.successfulTxCount} successful`}
               </span>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function BlockDetailPage() {
           <div className="space-y-1">
             <span className="text-slate-400 font-medium">Block Reward & Fees</span>
             <div className="p-2 rounded-lg bg-[#090d18] border border-slate-800 text-emerald-400 font-mono font-semibold">
-              +{Number(block.reward || 0.024).toFixed(4)} SOL
+              {block.reward == null ? 'N/A' : `+${Number(block.reward).toFixed(4)} SOL`}
             </div>
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function BlockDetailPage() {
                       <AddressLink address={tx.signer} chars={5} />
                     </td>
                     <td className="py-2.5 px-3 text-right text-slate-300">
-                      {tx.fee ? Number(tx.fee).toFixed(6) : '0.000005'}
+                      {tx.fee == null ? 'N/A' : Number(tx.fee).toFixed(6)}
                     </td>
                   </tr>
                 ))}

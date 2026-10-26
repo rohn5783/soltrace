@@ -17,7 +17,7 @@ import { useNetwork } from '../context/NetworkContext';
 export default function AnalyticsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { network, liveTps } = useNetwork();
+  const { network } = useNetwork();
 
   useEffect(() => {
     let mounted = true;
@@ -40,9 +40,9 @@ export default function AnalyticsPage() {
     };
   }, [network]);
 
-  const currentTps = liveTps?.tps || stats?.tps || 2850;
-  const trueTps = stats?.trueTps || Math.round(currentTps * 0.28);
-  const voteTps = currentTps - trueTps;
+  const currentTps = stats?.tps ?? null;
+  const trueTps = stats?.trueTps ?? null;
+  const voteTps = currentTps != null && trueTps != null ? currentTps - trueTps : null;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
             Network Throughput
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            {currentTps.toLocaleString()} TPS
+            {currentTps == null ? 'N/A' : `${currentTps.toLocaleString()} TPS`}
           </div>
           <span className="text-xs text-emerald-400">Total raw blockchain TPS</span>
         </div>
@@ -76,9 +76,9 @@ export default function AnalyticsPage() {
             Non-Vote Transactions
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            {trueTps.toLocaleString()} TPS
+            {trueTps == null ? 'N/A' : `${trueTps.toLocaleString()} TPS`}
           </div>
-          <span className="text-xs text-purple-400">User DeFi & SPL executions</span>
+          <span className="text-xs text-purple-400">RPC-reported non-vote transactions</span>
         </div>
 
         {/* Average Slot Time */}
@@ -87,9 +87,9 @@ export default function AnalyticsPage() {
             Slot Duration
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1">
-            ~412 ms
+            N/A
           </div>
-          <span className="text-xs text-cyan-400">Target: 400ms per block</span>
+          <span className="text-xs text-cyan-400">Slot duration is unavailable from this RPC sample</span>
         </div>
 
         {/* Total Processed Txs */}
@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
             All-Time Transactions
           </span>
           <div className="text-2xl font-extrabold text-white font-mono mt-1 mb-1 truncate">
-            {stats?.totalTransactions ? (stats.totalTransactions / 1e9).toFixed(1) + 'B' : '324.2B'}
+            {stats?.totalTransactions == null ? 'N/A' : `${(stats.totalTransactions / 1e9).toFixed(1)}B`}
           </div>
           <span className="text-xs text-slate-400">Confirmed since Genesis</span>
         </div>
@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
 
       {/* TPS History Chart */}
       <section>
-        <TpsChart liveTps={liveTps} />
+        <TpsChart />
       </section>
 
       {/* Cluster Health & Breakdown */}
@@ -122,28 +122,28 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-slate-300 font-medium">Consensus Voting Txns</span>
                 <span className="font-mono text-purple-400">
-                  {voteTps.toLocaleString()} TPS ({Math.round((voteTps / currentTps) * 100)}%)
+                  {voteTps == null || !currentTps ? 'N/A' : `${voteTps.toLocaleString()} TPS (${Math.round((voteTps / currentTps) * 100)}%)`}
                 </span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-2">
                 <div
                   className="bg-purple-500 h-2 rounded-full"
-                  style={{ width: `${(voteTps / currentTps) * 100}%` }}
+                  style={{ width: `${voteTps == null || !currentTps ? 0 : (voteTps / currentTps) * 100}%` }}
                 ></div>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">Smart Contracts & SPL Transfers</span>
+                <span className="text-slate-300 font-medium">Non-Vote Transactions</span>
                 <span className="font-mono text-emerald-400">
-                  {trueTps.toLocaleString()} TPS ({Math.round((trueTps / currentTps) * 100)}%)
+                  {trueTps == null || !currentTps ? 'N/A' : `${trueTps.toLocaleString()} TPS (${Math.round((trueTps / currentTps) * 100)}%)`}
                 </span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-2">
                 <div
                   className="bg-emerald-400 h-2 rounded-full"
-                  style={{ width: `${(trueTps / currentTps) * 100}%` }}
+                  style={{ width: `${trueTps == null || !currentTps ? 0 : (trueTps / currentTps) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -159,15 +159,15 @@ export default function AnalyticsPage() {
           <div className="space-y-3 text-xs">
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#090d18] border border-slate-800">
               <span className="text-slate-400">Active Consensus Nodes</span>
-              <span className="font-mono text-slate-100 font-bold">1,428 Validators</span>
+              <span className="font-mono text-slate-100 font-bold">N/A</span>
             </div>
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#090d18] border border-slate-800">
               <span className="text-slate-400">Nakamoto Coefficient</span>
-              <span className="font-mono text-emerald-400 font-bold">21 (Superminority)</span>
+              <span className="font-mono text-emerald-400 font-bold">N/A</span>
             </div>
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#090d18] border border-slate-800">
               <span className="text-slate-400">Staked SOL Supply</span>
-              <span className="font-mono text-slate-100 font-bold">385,420,000 SOL (70.2%)</span>
+              <span className="font-mono text-slate-100 font-bold">N/A</span>
             </div>
           </div>
         </div>

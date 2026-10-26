@@ -11,15 +11,16 @@ const InstructionSchema = new mongoose.Schema({
 
 const BalanceChangeSchema = new mongoose.Schema({
   account: { type: String, required: true },
-  preBalance: { type: Number, default: 0 },
-  postBalance: { type: Number, default: 0 },
-  changeSol: { type: Number, default: 0 },
+  preBalance: { type: Number },
+  postBalance: { type: Number },
+  changeSol: { type: Number },
 });
 
 const TokenTransferSchema = new mongoose.Schema({
   from: { type: String },
   to: { type: String },
   amount: { type: Number },
+  rawAmount: { type: String },
   tokenMint: { type: String },
   symbol: { type: String },
   decimals: { type: Number, default: 9 },
@@ -30,8 +31,6 @@ const TransactionSchema = new mongoose.Schema(
     signature: {
       type: String,
       required: true,
-      unique: true,
-      index: true,
     },
     slot: {
       type: Number,
@@ -40,14 +39,11 @@ const TransactionSchema = new mongoose.Schema(
     },
     blockTime: {
       type: Date,
-      default: Date.now,
       index: true,
     },
     status: {
       type: String,
-      enum: ['Success', 'Failed'],
-      default: 'Success',
-      index: true,
+      enum: ['Success', 'Failed', 'Unavailable'],
     },
     err: {
       type: mongoose.Schema.Types.Mixed,
@@ -55,12 +51,9 @@ const TransactionSchema = new mongoose.Schema(
     },
     fee: {
       type: Number,
-      default: 0.000005,
     },
     signer: {
       type: String,
-      required: true,
-      index: true,
     },
     recentBlockhash: {
       type: String,
@@ -72,15 +65,18 @@ const TransactionSchema = new mongoose.Schema(
     network: {
       type: String,
       default: 'mainnet-beta',
-      index: true,
+      required: true,
     },
+    source: { type: String, enum: ['rpc', 'cache'], required: true },
+    fetchedAt: { type: Date, required: true },
   },
   {
     timestamps: true,
   }
 );
 
-TransactionSchema.index({ slot: -1, network: 1 });
-TransactionSchema.index({ signer: 1, blockTime: -1 });
+TransactionSchema.index({ network: 1, signature: 1 }, { unique: true });
+TransactionSchema.index({ network: 1, slot: -1 });
+TransactionSchema.index({ network: 1, signer: 1, blockTime: -1 });
 
 export default mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);

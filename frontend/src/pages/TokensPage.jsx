@@ -5,18 +5,20 @@ import AddressLink from '../components/common/AddressLink';
 import CopyButton from '../components/common/CopyButton';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import api from '../api/client';
+import { useNetwork } from '../context/NetworkContext';
 
 export default function TokensPage() {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const { network } = useNetwork();
 
   useEffect(() => {
     let mounted = true;
     const fetchTokens = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/tokens');
+        const res = await api.get(`/tokens?network=${network}`);
         if (mounted && res.success && res.data) {
           setTokens(res.data);
         }
@@ -31,7 +33,7 @@ export default function TokensPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [network]);
 
   const filteredTokens = tokens.filter((t) => {
     if (!search.trim()) return true;
@@ -89,7 +91,7 @@ export default function TokensPage() {
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
                 {filteredTokens.map((token, idx) => {
-                  const isPositive = (token.change24h || 0) >= 0;
+                  const isPositive = token.change24h != null && token.change24h >= 0;
                   return (
                     <tr key={token.mint} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-3 text-slate-500 font-mono text-xs">
@@ -122,7 +124,7 @@ export default function TokensPage() {
                         </Link>
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-100 font-semibold">
-                        ${token.price ? Number(token.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : '0.00'}
+                        {token.price == null ? 'N/A' : `$${Number(token.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
                       </td>
                       <td className="py-3 px-3 text-right font-mono">
                         <span
@@ -130,16 +132,14 @@ export default function TokensPage() {
                             isPositive ? 'text-emerald-400' : 'text-rose-400'
                           }`}
                         >
-                          {isPositive ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
-                          {isPositive ? '+' : ''}
-                          {token.change24h?.toFixed(2)}%
+                          {token.change24h == null ? 'N/A' : <>{isPositive ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}{isPositive ? '+' : ''}{token.change24h.toFixed(2)}%</>}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-300">
-                        ${((token.volume24h || 0) / 1e6).toFixed(1)}M
+                        {token.volume24h == null ? 'N/A' : `$${(token.volume24h / 1e6).toFixed(1)}M`}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-100 font-semibold">
-                        ${((token.marketCap || 0) / 1e6).toFixed(1)}M
+                        {token.marketCap == null ? 'N/A' : `$${(token.marketCap / 1e6).toFixed(1)}M`}
                       </td>
                       <td className="py-3 px-3 font-mono">
                         <AddressLink address={token.mint} isToken={true} chars={4} />

@@ -11,7 +11,7 @@ import {
 import { Activity, BarChart2, Zap } from 'lucide-react';
 import api from '../../api/client';
 
-export default function TpsChart({ liveTps }) {
+export default function TpsChart() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('both'); // 'total', 'true', 'both'
@@ -32,26 +32,6 @@ export default function TpsChart({ liveTps }) {
 
     fetchHistory();
   }, []);
-
-  // When live TPS pulse arrives, append or update latest point
-  useEffect(() => {
-    if (liveTps?.tps) {
-      setData((prev) => {
-        if (!prev || !prev.length) return prev;
-        const lastIdx = prev.length - 1;
-        const last = prev[lastIdx];
-        if (!last) return prev;
-
-        const updated = [...prev];
-        updated[lastIdx] = {
-          ...last,
-          tps: liveTps.tps,
-          trueTps: Math.round(liveTps.tps * 0.28),
-        };
-        return updated;
-      });
-    }
-  }, [liveTps]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -82,10 +62,10 @@ export default function TpsChart({ liveTps }) {
         <div>
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <Activity className="w-4 h-4 text-purple-400" />
-            Solana Network TPS (24-Hour Performance)
+            Historical Solana Network TPS
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time transaction throughput and true user execution activity
+            Historical samples are unavailable until Soltrace stores a trusted metrics history
           </p>
         </div>
 
@@ -109,7 +89,9 @@ export default function TpsChart({ liveTps }) {
         </div>
       </div>
 
-      <div className="h-64 w-full">
+      {!loading && data.length === 0 ? (
+        <div className="h-64 flex items-center justify-center text-sm text-slate-500">No historical performance samples are available.</div>
+      ) : <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -150,7 +132,7 @@ export default function TpsChart({ liveTps }) {
             )}
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </div>}
     </div>
   );
 }

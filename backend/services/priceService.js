@@ -1,62 +1,36 @@
 import axios from 'axios';
 
-let priceCache = {
-  sol: {
-    usd: 186.5,
-    usd_24h_change: 4.15,
-    usd_market_cap: 89500000000,
-    usd_24h_vol: 3450000000,
-  },
-  tokens: {},
-  lastUpdated: 0,
-};
-
-const CACHE_TTL_MS = 60 * 1000; // 1 minute cache
+const TTL_MS = 60_000;
+let solCache = null;
+const tokenCache = new Map();
 
 export const getSolanaPrice = async () => {
-  const now = Date.now();
-  if (now - priceCache.lastUpdated < CACHE_TTL_MS && priceCache.sol.usd > 0) {
-    return priceCache.sol;
-  }
-
-  try {
-    const res = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
-      params: {
-        ids: 'solana',
-        vs_currencies: 'usd',
-        include_24hr_vol: 'true',
-        include_24hr_change: 'true',
-        include_market_cap: 'true',
-      },
-      timeout: 3500,
-    });
-
-    if (res.data?.solana) {
-      priceCache.sol = {
-        usd: res.data.solana.usd,
-        usd_24h_change: res.data.solana.usd_24h_change || 0,
-        usd_market_cap: res.data.solana.usd_market_cap || 89000000000,
-        usd_24h_vol: res.data.solana.usd_24h_vol || 3000000000,
-      };
-      priceCache.lastUpdated = now;
-    }
-  } catch (err) {
-    // If rate-limited or offline, return cached or fallback price
-    console.debug('[PriceService] Live price fetch failed or throttled, using cache:', err.message);
-  }
-
-  return priceCache.sol;
+  if (solCache && Date.now() - solCache.cachedAt < TTL_MS) return { ...solCache.value, source: 'cache' };
+  const response = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+    params: { ids: 'solana', vs_currencies: 'usd', include_24hr_vol: true, include_24hr_change: true, include_market_cap: true },
+    timeout: Number(process.env.MARKET_DATA_TIMEOUT_MS) || 4000,
+  });
+  const row = response.data?.solana;
+  if (!row || !Number.isFinite(row.usd)) throw new Error('SOL market data unavailable');
+  const value = { usd: row.usd, usd_24h_change: Number.isFinite(row.usd_24h_change) ? row.usd_24h_change : null, usd_market_cap: Number.isFinite(row.usd_market_cap) ? row.usd_market_cap : null, usd_24h_vol: Number.isFinite(row.usd_24h_vol) ? row.usd_24h_vol : null, source: 'coingecko', fetchedAt: new Date().toISOString() };
+  solCache = { value, cachedAt: Date.now() };
+  return value;
 };
 
 export const getTokenPrices = async (mintAddresses = []) => {
-  if (!mintAddresses.length) return {};
-  try {
-    const ids = mintAddresses.join(',');
-    const res = await axios.get(`https://api.jup.ag/price/v2?ids=${ids}`, {
-      timeout: 3500,
-    });
-    return res.data?.data || {};
-  } catch (err) {
-    return {};
+  const unique = [...new Set(mintAddresses)].filter((mint) => typeof mint === 'string' && mint.length <= 44);
+  if (!unique.length) return {};
+  const now = Date.now();
+  const missing = unique.filter((mint) => !tokenCache.has(mint) || now - tokenCache.get(mint).cachedAt >= TTL_MS);
+  if (missing.length) {
+    const response = await axios.get('https://api.jup.ag/price/v2', { params: { ids: missing.join(',') }, timeout: Number(process.env.MARKET_DATA_TIMEOUT_MS) || 4000 });
+    for (const mint of missing) {
+      const price = Number(response.data?.data?.[mint]?.price);
+      tokenCache.set(mint, { value: Number.isFinite(price) ? { price, source: 'jupiter', fetchedAt: new Date().toISOString() } : null, cachedAt: now });
+    }
   }
+  return Object.fromEntries(unique.map((mint) => {
+    const entry = tokenCache.get(mint);
+    return [mint, entry?.value ? { ...entry.value, source: now - entry.cachedAt < 1 ? 'jupiter' : 'cache' } : null];
+  }).filter(([, value]) => value));
 };

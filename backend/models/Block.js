@@ -5,12 +5,10 @@ const BlockSchema = new mongoose.Schema(
     slot: {
       type: Number,
       required: true,
-      index: true,
     },
     blockhash: {
       type: String,
       required: true,
-      index: true,
     },
     previousBlockhash: {
       type: String,
@@ -20,7 +18,6 @@ const BlockSchema = new mongoose.Schema(
     },
     blockTime: {
       type: Date,
-      default: Date.now,
       index: true,
     },
     blockHeight: {
@@ -28,28 +25,26 @@ const BlockSchema = new mongoose.Schema(
     },
     txCount: {
       type: Number,
-      default: 0,
     },
     leader: {
       type: String,
-      default: 'Unknown',
-      index: true,
     },
     reward: {
       type: Number,
-      default: 0,
     },
     network: {
       type: String,
       default: 'mainnet-beta',
-      index: true,
+      required: true,
     },
+    source: { type: String, enum: ['rpc', 'cache'], required: true },
+    fetchedAt: { type: Date, required: true },
   },
   {
     timestamps: true,
   }
 );
 
-BlockSchema.index({ slot: -1, network: 1 });
+BlockSchema.index({ network: 1, slot: 1 }, { unique: true });
 
 export default mongoose.models.Block || mongoose.model('Block', BlockSchema);

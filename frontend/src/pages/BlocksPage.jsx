@@ -45,7 +45,7 @@ export default function BlocksPage() {
             Solana Confirmed Blocks
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Browse newly committed blocks, validators, and slot production on {network}
+            Browse confirmed blocks and slot production on {network}
           </p>
         </div>
 
@@ -99,8 +99,8 @@ export default function BlocksPage() {
                       </Link>
                     </td>
                     <td className="py-3 px-3 text-slate-300">
-                      <span className="truncate inline-block max-w-[120px]" title={block.blockhash}>
-                        {block.blockhash.slice(0, 6)}...{block.blockhash.slice(-6)}
+                      <span className="truncate inline-block max-w-[120px]" title={block.blockhash || ''}>
+                        {block.blockhash ? `${block.blockhash.slice(0, 6)}...${block.blockhash.slice(-6)}` : 'N/A'}
                       </span>
                       <CopyButton text={block.blockhash} />
                     </td>
@@ -108,15 +108,15 @@ export default function BlocksPage() {
                       <AddressLink address={block.leader} chars={5} />
                     </td>
                     <td className="py-3 px-3 text-right text-slate-200">
-                      {block.txCount?.toLocaleString() || 0}
+                      {block.txCount?.toLocaleString() ?? 'N/A'}
                     </td>
                     <td className="py-3 px-3 text-right text-emerald-400">
-                      +{Number(block.reward || 0.025).toFixed(4)} SOL
+                      {block.reward == null ? 'N/A' : `+${Number(block.reward).toFixed(4)} SOL`}
                     </td>
                     <td className="py-3 px-3 text-right text-slate-400 font-sans">
                       <div className="flex items-center justify-end gap-1 text-[11px]">
                         <Clock className="w-3 h-3 text-slate-500" />
-                        <span>{new Date(block.blockTime).toLocaleTimeString()}</span>
+                        <span>{block.blockTime ? new Date(block.blockTime).toLocaleTimeString() : 'Unavailable'}</span>
                       </div>
                     </td>
                   </tr>

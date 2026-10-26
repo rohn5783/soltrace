@@ -1,0 +1,70 @@
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/soltrace
+      SOLANA_RPC_MAINNET: ${SOLANA_RPC_MAINNET:-https://api.mainnet-beta.solana.com}
+      SOLANA_RPC_DEVNET: ${SOLANA_RPC_DEVNET:-https://api.devnet.solana.com}
+      SOLANA_RPC_TESTNET: ${SOLANA_RPC_TESTNET:-https://api.testnet.solana.com}
+      SOLANA_COMMITMENT: ${SOLANA_COMMITMENT:-confirmed}
+      SOLANA_RPC_TIMEOUT_MS: ${SOLANA_RPC_TIMEOUT_MS:-10000}
+      SOLANA_RPC_MAX_RETRIES: ${SOLANA_RPC_MAX_RETRIES:-2}
+      SOLANA_STREAM_NETWORK: ${SOLANA_STREAM_NETWORK:-mainnet-beta}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_BACKEND_URL: http://localhost:5000
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  indexer:
+    build: ./backend
+    profiles: ["worker"]
+    command: ["npm", "run", "indexer"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/soltrace
+      SOLANA_RPC_MAINNET: ${SOLANA_RPC_MAINNET:-https://api.mainnet-beta.solana.com}
+      SOLANA_RPC_DEVNET: ${SOLANA_RPC_DEVNET:-https://api.devnet.solana.com}
+      SOLANA_RPC_TESTNET: ${SOLANA_RPC_TESTNET:-https://api.testnet.solana.com}
+      SOLANA_INDEX_NETWORK: ${SOLANA_INDEX_NETWORK:-mainnet-beta}
+      INDEXER_BATCH_SIZE: ${INDEXER_BATCH_SIZE:-20}
+      INDEXER_INITIAL_LOOKBACK_SLOTS: ${INDEXER_INITIAL_LOOKBACK_SLOTS:-100}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

@@ -11,7 +11,7 @@ import api from '../api/client';
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { network, liveBlock, liveTx, liveTps } = useNetwork();
+  const { network, liveBlock, liveSlot } = useNetwork();
 
   useEffect(() => {
     let mounted = true;
@@ -76,18 +76,18 @@ export default function Dashboard() {
 
       {/* Network Stats KPI Cards */}
       <section>
-        <StatsOverview stats={stats} liveTps={liveTps} />
+        <StatsOverview stats={stats} liveSlot={liveSlot?.network === network ? liveSlot : null} />
       </section>
 
       {/* 24h TPS Performance Chart */}
       <section>
-        <TpsChart liveTps={liveTps} />
+        <TpsChart />
       </section>
 
       {/* Side-by-Side Real-Time Feeds: Latest Blocks & Latest Transactions */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LatestBlocksTable liveBlock={liveBlock} />
-        <LatestTransactionsTable liveTx={liveTx} />
+        <LatestTransactionsTable />
       </section>
     </div>
   );

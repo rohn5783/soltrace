@@ -200,10 +200,7 @@ export default function TransactionDetailPage() {
           <div className="space-y-1">
             <span className="text-slate-400 font-medium">Transaction Fee</span>
             <div className="p-2.5 rounded-lg bg-[#090d18] border border-slate-800 font-mono text-slate-200 flex items-center justify-between">
-              <span>{tx.fee ? Number(tx.fee).toFixed(6) : '0.000005'} SOL</span>
-              <span className="text-slate-400 text-[11px] font-sans">
-                (${(Number(tx.fee || 0.000005) * 185).toFixed(4)})
-              </span>
+              <span>{tx.fee == null ? 'N/A' : `${Number(tx.fee).toFixed(6)} SOL`}</span>
             </div>
           </div>
 
