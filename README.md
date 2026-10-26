@@ -12,7 +12,7 @@ React/Vite ── REST + Socket.IO ── Express API ── Solana JSON RPC / W
 Indexer worker ── Solana RPC ── MongoDB blocks, transactions, checkpoints
 ```
 
-- **Implemented:** direct RPC slot/epoch/performance samples; block details and recent confirmed blocks; signature lookup; account balance and SPL token accounts; mint supply/decimals/authorities; external price lookup with timestamps; RPC slot/block socket events; bounded restartable indexer; health/readiness and unit tests.
+- **Implemented:** direct RPC slot/epoch/performance samples; block details and recent confirmed blocks; signature lookup; account balance and SPL token accounts; mint supply/decimals/authorities; external price lookup with timestamps; live slot/block Socket.IO events; shared network-stat snapshots pushed to all clients every 30 seconds by default; bounded restartable indexer; health/readiness and unit tests.
 - **Partial:** MongoDB models/indexes; the HTTP explorer primarily serves direct RPC responses and does not yet use indexed records as its read-through store. Metrics are process-level only. Rate limiting is local to one API process.
 - **Unavailable/planned:** Redis caching, full chain indexing, historical TPS chart, complete address history independent of provider support, holder distribution, validator decentralization metrics, authenticated cloud watchlists.
 
@@ -48,7 +48,8 @@ Configure `backend/.env` with a suitable RPC endpoint and MongoDB URI. Do not co
 | `SOLANA_RPC_TIMEOUT_MS` | Bounded RPC timeout (1–60 seconds) | `10000` |
 | `SOLANA_RPC_MAX_RETRIES` | Retry count (0–5) | `2` |
 | `SOLANA_STREAM_NETWORK` | Network used by the single global slot stream | `mainnet-beta` |
-| `CORS_ORIGINS` | Comma-separated frontend origins | localhost Vite/3000 |
+| `SOLANA_STATS_BROADCAST_INTERVAL_MS` | Shared Socket.IO network-stat refresh interval (15–120 seconds) | `30000` |
+| `CORS_ORIGINS` | Additional comma-separated frontend origins; localhost and the production Vercel origin are included by default | localhost Vite/3000, Soltrace Vercel site |
 | `MARKET_DATA_TIMEOUT_MS` | External market data timeout | `4000` |
 | `SOLANA_INDEX_NETWORK` | Indexer cluster | `mainnet-beta` |
 | `INDEXER_BATCH_SIZE` | Maximum slot range per indexer batch (1–100) | `20` |

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Layers, Hash, Coins, Activity, Zap, TrendingUp, ShieldCheck } from 'lucide-react';
 import SearchBar from '../components/layout/SearchBar';
 import StatsOverview from '../components/dashboard/StatsOverview';
@@ -6,35 +6,10 @@ import TpsChart from '../components/dashboard/TpsChart';
 import LatestBlocksTable from '../components/dashboard/LatestBlocksTable';
 import LatestTransactionsTable from '../components/dashboard/LatestTransactionsTable';
 import { useNetwork } from '../context/NetworkContext';
-import api from '../api/client';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const { network, liveBlock, liveSlot } = useNetwork();
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchOverview = async () => {
-      try {
-        const res = await api.get(`/stats/overview?network=${network}`);
-        if (mounted && res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (err) {
-        console.warn('Overview fetch error:', err.message);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchOverview();
-    const interval = setInterval(fetchOverview, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [network]);
+  const { network, liveBlock, liveSlot, networkStats } = useNetwork();
+  const stats = networkStats?.network === network ? networkStats : null;
 
   return (
     <div className="space-y-8 animate-fade-in">

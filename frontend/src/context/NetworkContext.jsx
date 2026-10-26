@@ -17,6 +17,7 @@ export const NetworkProvider = ({ children }) => {
 
   const [liveBlock, setLiveBlock] = useState(null);
   const [liveSlot, setLiveSlot] = useState(null);
+  const [networkStats, setNetworkStats] = useState(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [streamNetwork, setStreamNetwork] = useState(null);
 
@@ -28,6 +29,7 @@ export const NetworkProvider = ({ children }) => {
   useEffect(() => {
     setLiveSlot(null);
     setLiveBlock(null);
+    setNetworkStats(null);
     const socketUrl = BACKEND_URL || '/';
     const socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -48,6 +50,10 @@ export const NetworkProvider = ({ children }) => {
       if (slot.network === network) setLiveSlot(slot);
     });
 
+    socket.on('network_stats', (stats) => {
+      if (stats.network === network) setNetworkStats(stats);
+    });
+
     socket.on('disconnect', () => {
       setIsLiveConnected(false);
     });
@@ -65,6 +71,7 @@ export const NetworkProvider = ({ children }) => {
         networks: NETWORKS,
         liveBlock,
         liveSlot,
+        networkStats,
         isLiveConnected,
         streamNetwork,
       }}

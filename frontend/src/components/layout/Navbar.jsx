@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Layers,
@@ -15,38 +15,14 @@ import {
 } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { useNetwork, NETWORKS } from '../../context/NetworkContext';
-import api from '../../api/client';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [networkDropdownOpen, setNetworkDropdownOpen] = useState(false);
-  const [stats, setStats] = useState(null);
-
-  const { network, setNetwork, liveSlot, isLiveConnected, streamNetwork } = useNetwork();
+  const { network, setNetwork, liveSlot, networkStats, isLiveConnected, streamNetwork } = useNetwork();
+  const stats = networkStats?.network === network ? networkStats : null;
   const location = useLocation();
   const isDashboard = location.pathname === '/';
-
-  // Fetch quick stats for ticker
-  useEffect(() => {
-    let mounted = true;
-    const fetchQuickStats = async () => {
-      try {
-        const res = await api.get(`/stats/overview?network=${network}`);
-        if (mounted && res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (err) {
-        // Silent ticker error
-      }
-    };
-
-    fetchQuickStats();
-    const interval = setInterval(fetchQuickStats, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [network]);
 
   const navLinks = [
     { label: 'Dashboard', to: '/' },

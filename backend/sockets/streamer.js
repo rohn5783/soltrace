@@ -1,4 +1,5 @@
 import { getConnection, validateNetwork, lamportsToSol } from '../config/solana.js';
+import { solanaService } from '../services/solanaService.js';
 
 export const initSocketStreamer = (io) => {
   if (process.env.SOLANA_STREAM_ENABLED !== 'true') {
@@ -14,10 +15,39 @@ export const initSocketStreamer = (io) => {
   const lastErrorLog = new Map();
   let subscriptionId = null;
   let stopped = false;
+  let statsInterval = null;
+  let latestStats = null;
 
   io.on('connection', (socket) => {
     socket.emit('connected', { message: 'Connected to Soltrace RPC slot stream', network, timestamp: new Date().toISOString() });
+    if (latestStats) socket.emit('network_stats', latestStats);
   });
+
+  const broadcastNetworkStats = async () => {
+    if (stopped) return;
+    try {
+      const stats = await solanaService.getNetworkOverview(network);
+      if (!stopped) {
+        latestStats = stats;
+        io.emit('network_stats', stats);
+      }
+    } catch (error) {
+      const code = error.code || error.name || 'RPC error';
+      const now = Date.now();
+      if (now - (lastErrorLog.get(`stats:${code}`) || 0) >= 60_000) {
+        lastErrorLog.set(`stats:${code}`, now);
+        console.warn(`[stream] Could not refresh network stats (RPC error: ${code}); further identical warnings are rate-limited for 60s`);
+      }
+    }
+  };
+
+  // Fetch once for the whole server, then push the shared snapshot to clients.
+  // Slot events below remain near-real-time; slower market/epoch stats refresh
+  // every 30 seconds by default to stay within public RPC rate limits.
+  void broadcastNetworkStats();
+  const statsIntervalMs = Math.min(Math.max(Number(process.env.SOLANA_STATS_BROADCAST_INTERVAL_MS) || 30_000, 15_000), 120_000);
+  statsInterval = setInterval(broadcastNetworkStats, statsIntervalMs);
+  statsInterval.unref?.();
 
   const onSlot = async (slotInfo) => {
     const slot = slotInfo?.slot;
@@ -60,6 +90,7 @@ export const initSocketStreamer = (io) => {
   subscriptionId = connection.onSlotChange(onSlot);
   return async () => {
     stopped = true;
+    if (statsInterval) clearInterval(statsInterval);
     if (subscriptionId != null) await connection.removeSlotChangeListener(subscriptionId).catch(() => {});
   };
 };

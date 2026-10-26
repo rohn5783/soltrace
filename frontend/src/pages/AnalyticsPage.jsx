@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Activity,
   Zap,
@@ -10,35 +10,11 @@ import {
   Cpu,
 } from 'lucide-react';
 import TpsChart from '../components/dashboard/TpsChart';
-import LoadingSkeleton from '../components/common/LoadingSkeleton';
-import api from '../api/client';
 import { useNetwork } from '../context/NetworkContext';
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const { network } = useNetwork();
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchAnalytics = async () => {
-      try {
-        const res = await api.get(`/stats/overview?network=${network}`);
-        if (mounted && res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (err) {
-        console.warn('Analytics fetch error:', err.message);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-    return () => {
-      mounted = false;
-    };
-  }, [network]);
+  const { network, networkStats } = useNetwork();
+  const stats = networkStats?.network === network ? networkStats : null;
 
   const currentTps = stats?.tps ?? null;
   const trueTps = stats?.trueTps ?? null;
