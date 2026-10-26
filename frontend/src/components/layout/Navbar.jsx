@@ -41,7 +41,7 @@ export default function Navbar() {
     };
 
     fetchQuickStats();
-    const interval = setInterval(fetchQuickStats, 12000);
+    const interval = setInterval(fetchQuickStats, 30000);
     return () => {
       mounted = false;
       clearInterval(interval);

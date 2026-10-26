@@ -29,7 +29,7 @@ export default function Dashboard() {
     };
 
     fetchOverview();
-    const interval = setInterval(fetchOverview, 10000);
+    const interval = setInterval(fetchOverview, 30000);
     return () => {
       mounted = false;
       clearInterval(interval);

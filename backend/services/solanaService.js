@@ -5,6 +5,9 @@ import { POPULAR_TOKENS, KNOWN_PROGRAMS } from './chainMetadata.js';
 
 const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
+const overviewCache = new Map();
+const overviewInFlight = new Map();
+const OVERVIEW_CACHE_MS = 15_000;
 
 const fetched = (network, data, source = 'rpc') => ({ ...(data || {}), source, network, fetchedAt: new Date().toISOString(), stale: false });
 const inputError = (message) => Object.assign(new Error(message), { statusCode: 400, code: 'INVALID_INPUT' });
@@ -17,9 +20,10 @@ const checkedLimit = (limit, max = 100) => {
   if (!Number.isInteger(value) || value < 1 || value > max) throw inputError(`limit must be an integer between 1 and ${max}`);
   return value;
 };
-export const rpc = async (operation) => {
-  const timeout = Math.min(Math.max(Number(process.env.SOLANA_RPC_TIMEOUT_MS) || 10000, 1000), 60000);
-  const retries = Math.min(Math.max(Number(process.env.SOLANA_RPC_MAX_RETRIES ?? 2) || 0, 0), 5);
+export const rpc = async (operation, { retries: retryOverride, timeout: timeoutOverride } = {}) => {
+  const timeout = Math.min(Math.max(Number(timeoutOverride ?? process.env.SOLANA_RPC_TIMEOUT_MS) || 10000, 1000), 60000);
+  const configuredRetries = Number(process.env.SOLANA_RPC_MAX_RETRIES ?? 2);
+  const retries = Math.min(Math.max(retryOverride ?? (Number.isFinite(configuredRetries) ? configuredRetries : 2), 0), 5);
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let timer;
@@ -97,19 +101,38 @@ export const normalizeTransaction = (parsedTx, signature, network) => {
 export const solanaService = {
   async getNetworkOverview(network = 'mainnet-beta') {
     validateNetwork(network);
-    const connection = getConnection(network);
-    const [slot, epochInfo, samples, transactionCount, price] = await Promise.all([
-      rpc(() => connection.getSlot('confirmed')),
-      rpc(() => connection.getEpochInfo('confirmed')),
-      rpc(() => connection.getRecentPerformanceSamples(1)).catch(() => []),
-      rpc(() => connection.getTransactionCount('confirmed')).catch(() => null),
-      getSolanaPrice().catch(() => null),
-    ]);
-    const sample = samples?.[0];
-    const tps = sample?.samplePeriodSecs ? sample.numTransactions / sample.samplePeriodSecs : null;
-    const trueTps = sample?.samplePeriodSecs && sample.numNonVoteTransactions != null ? sample.numNonVoteTransactions / sample.samplePeriodSecs : null;
-    const priceData = price ? { solPrice: price.usd ?? null, solPriceChange24h: price.usd_24h_change ?? null, marketCap: price.usd_market_cap ?? null, volume24h: price.usd_24h_vol ?? null, marketSource: price.source, marketFetchedAt: price.fetchedAt } : {};
-    return fetched(network, { currentSlot: slot, currentEpoch: epochInfo.epoch, slotIndex: epochInfo.slotIndex, slotsInEpoch: epochInfo.slotsInEpoch, epochProgress: epochInfo.slotsInEpoch ? Number((epochInfo.slotIndex / epochInfo.slotsInEpoch * 100).toFixed(2)) : null, tps: tps == null ? null : Number(tps.toFixed(2)), trueTps: trueTps == null ? null : Number(trueTps.toFixed(2)), totalTransactions: transactionCount, validatorCount: null, blockTime: null, ...priceData });
+    const cached = overviewCache.get(network);
+    if (cached && Date.now() - cached.cachedAt < OVERVIEW_CACHE_MS) return cached.value;
+    if (overviewInFlight.has(network)) return overviewInFlight.get(network);
+
+    const request = (async () => {
+      try {
+        const connection = getConnection(network);
+        // Overview is polled by multiple visible components. Don't retry rate
+        // limited public RPC calls; return quickly and let the cache absorb load.
+        const [slot, epochInfo, samples, transactionCount, price] = await Promise.all([
+          rpc(() => connection.getSlot('confirmed'), { retries: 0, timeout: 8000 }),
+          rpc(() => connection.getEpochInfo('confirmed'), { retries: 0, timeout: 8000 }),
+          rpc(() => connection.getRecentPerformanceSamples(1), { retries: 0, timeout: 8000 }).catch(() => []),
+          rpc(() => connection.getTransactionCount('confirmed'), { retries: 0, timeout: 8000 }).catch(() => null),
+          getSolanaPrice().catch(() => null),
+        ]);
+        const sample = samples?.[0];
+        const tps = sample?.samplePeriodSecs ? sample.numTransactions / sample.samplePeriodSecs : null;
+        const trueTps = sample?.samplePeriodSecs && sample.numNonVoteTransactions != null ? sample.numNonVoteTransactions / sample.samplePeriodSecs : null;
+        const priceData = price ? { solPrice: price.usd ?? null, solPriceChange24h: price.usd_24h_change ?? null, marketCap: price.usd_market_cap ?? null, volume24h: price.usd_24h_vol ?? null, marketSource: price.source, marketFetchedAt: price.fetchedAt } : {};
+        const value = fetched(network, { currentSlot: slot, currentEpoch: epochInfo.epoch, slotIndex: epochInfo.slotIndex, slotsInEpoch: epochInfo.slotsInEpoch, epochProgress: epochInfo.slotsInEpoch ? Number((epochInfo.slotIndex / epochInfo.slotsInEpoch * 100).toFixed(2)) : null, tps: tps == null ? null : Number(tps.toFixed(2)), trueTps: trueTps == null ? null : Number(trueTps.toFixed(2)), totalTransactions: transactionCount, validatorCount: null, blockTime: null, ...priceData });
+        overviewCache.set(network, { value, cachedAt: Date.now() });
+        return value;
+      } catch (error) {
+        if (cached) return { ...cached.value, source: 'stale-cache', stale: true };
+        throw error;
+      } finally {
+        overviewInFlight.delete(network);
+      }
+    })();
+    overviewInFlight.set(network, request);
+    return request;
   },
   async getLatestBlocks(network = 'mainnet-beta', limit = 15) {
     validateNetwork(network); checkedLimit(limit, 50);
